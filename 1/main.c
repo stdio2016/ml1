@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "id3.h"
+
 void mlread(FILE *f)
 {
   int i;
@@ -36,6 +37,8 @@ int main(void)
   }
   mlread(f);
   shuffleData();
+  struct decision_tree *tree = id3_for_all();
+  printDecision(tree, 0);
   fclose(f);
   return 0;
 }

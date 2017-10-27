@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "id3.h"
 int Target[150];
 float Features[4][150];
@@ -18,6 +19,7 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
   int subcount[3] = {0,0,0};
   int prevTarget = Target[sortOrder[from]];
   float *feature = Features[feat];
+  float prevf = feature[sortOrder[from]];
   subcount[prevTarget]++;
   int targetChangePrev = 0;
   float best = -1000; // should be -Infinite
@@ -25,7 +27,6 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
     int id = sortOrder[i];
     int t = Target[id];
     float f = feature[id];
-    float prevf = feature[id - 1];
     if (f != prevf) { // possible partition point
       // maybe target changes but feature doesn't
       int targetChange = 0;
@@ -57,6 +58,7 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
     }
     subcount[t]++;
     prevTarget = t;
+    prevf = f;
   }
   return best / (to - from);
 }
@@ -93,6 +95,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
       }
     }
     node->target = majority;
+    node->feature = to -from;
   }
   else {
     node->target = -1;
@@ -102,18 +105,22 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
     float threashold = (Features[feature][pless] + Features[feature][pmore]) / 2;
     node->threashold = threashold;
     // arrange training data
-    int *temp = state->temp; // get temp storage
-    int less = from, more = partition;
     for (i = 0; i < 4; i++) { // for each feature
-      int j;
       if (i == feature) continue; //no need to sort that!
       int *sortOrder = &state->sortOrder[150 * i];
-      for (j = from; j < to; j++) {
-        if (Features[i][sortOrder[j]] < threashold) {
-          temp[less++] = sortOrder[j];
+      int less = from, more = to - 1;
+      while (less < more) {
+        while (less < to - 1 && Features[i][sortOrder[less]] < threashold) {
+          less++;
         }
-        else {
-          temp[more++] = sortOrder[j];
+        while (more > from && Features[i][sortOrder[more]] >= threashold) {
+          more--;
+        }
+        if (less < more) {
+          int tmp = sortOrder[less];
+          sortOrder[less] = sortOrder[more];
+          sortOrder[more] = tmp;
+          less++; more--;
         }
       }
     }
@@ -168,7 +175,43 @@ int *sortFeatures() {
   }
   for (i = 0; i < 4; i++) {
     featureToComp = i;
-    qsort(&sortOrder[i * 150], sizeof(int), 150, featureCompare);
+    qsort(&sortOrder[i * 150], 150, sizeof(int), featureCompare);
   }
   return sortOrder;
 }
+
+struct decision_tree *id3_for_all() {
+  int i;
+  logcache[0] = 0;
+  for (i = 1; i <= 150; i++) {
+    logcache[i] = i * log(i);
+  }
+  int *order = sortFeatures();
+  struct id3_state state;
+  state.sortOrder = order;
+  struct decision_tree *tree = id3_runner(&state, 0, 150);
+  free(order);
+  return tree;
+}
+
+void printDecision(struct decision_tree *node, int indent) {
+  int i;
+  for (i = 0; i < indent; i++) {
+    printf(" ");
+  }
+  if (node->target == 0) {
+    printf("Iris-setosa %d\n", node->feature);
+  }
+  else if (node->target == 1) {
+    printf("Iris-versicolor %d\n", node->feature);
+  }
+  else if (node->target == 2) {
+    printf("Iris-virginica %d\n", node->feature);
+  }
+  else {
+    printf("test feature %d, threashold = %f\n", node->feature, node->threashold);
+    printDecision(node->less, indent+1);
+    printDecision(node->more, indent+1);
+  }
+}
+
