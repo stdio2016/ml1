@@ -124,3 +124,51 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   return node;
 }
 
+void swapfloat(float *a, float *b) {
+  float tmp = *a;
+  *a = *b;
+  *b = tmp;
+}
+
+void shuffleData() {
+  srand(9487);
+  int i, r;
+  for (i = 0; i < 150-1; i++) {
+    r = rand() % (150 - i) + i;
+    if (r == i) continue;
+    // swap item at r and i
+    int tmp = Target[i];
+    Target[i] = Target[r];
+    Target[r] = tmp;
+    int j = 0;
+    for (j = 0; j < 4; j++) {
+      swapfloat(&Features[j][i], &Features[j][r]);
+    }
+  }
+}
+
+static int featureToComp;
+int featureCompare(const void *a, const void *b) {
+  int i = *(int *) a, j = *(int *) b;
+  float fa = Features[featureToComp][i];
+  float fb = Features[featureToComp][j];
+  if (fa < fb) return -1;
+  if (fa == fb) return 0;
+  if (fa > fb) return 1;
+}
+
+int *sortFeatures() {
+  int i, j;
+  int *sortOrder = malloc(sizeof(int) * 150 * 4);
+  if (sortOrder == NULL) exit(-2);
+  for (i = 0; i < 4; i++) {
+    for (j = 0; j < 150; j++) {
+      sortOrder[i * 150 + j] = j;
+    }
+  }
+  for (i = 0; i < 4; i++) {
+    featureToComp = i;
+    qsort(&sortOrder[i * 150], sizeof(int), 150, featureCompare);
+  }
+  return sortOrder;
+}

@@ -5,4 +5,7 @@ struct decision_tree {
   float threashold;
   struct decision_tree *less, *more;
 };
+extern int Target[];
+extern float Features[][150];
 
+void shuffleData();
