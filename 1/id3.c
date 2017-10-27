@@ -12,8 +12,9 @@ struct id3_state {
 };
 
 float logcache[151];
-
-float ig(const int *sortOrder, int feat, int from, int to, const int *count, int *partition)
+// sortOrder[from ~ to-1] is dataset D, sorted by descriptive feature feat
+// H is entropy of the dataset D
+float ig(const int *sortOrder, int feat, int from, int to, const int *count, int *partition, float H)
 {
   int i;
   int subcount[3] = {0,0,0};
@@ -22,7 +23,16 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
   float prevf = feature[sortOrder[from]];
   subcount[prevTarget]++;
   int targetChangePrev = 0;
-  float best = -1000; // should be -Infinite
+  for (i = from + 1; i < to; i++) {
+    // maybe target changes but feature doesn't
+    int id = sortOrder[i];
+    if (feature[id] != prevf) break;
+    if (Target[id] != prevTarget) {
+      targetChangePrev = 1;
+      break;
+    }
+  }
+  float best = -INFINITY;
   for (i = from + 1; i < to; i++) {
     int id = sortOrder[i];
     int t = Target[id];
@@ -41,16 +51,24 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
       }
       // a partition point
       if (targetChange || targetChangePrev || t != prevTarget) {
-        // compute entropy
-        float entropy = 0;
+        // compute information gain = H(t,D) - rem(d,D)
         int j;
-        // for each target
+        float gain = H;
+        // compute rem(d,D)
+        float Hless = 0, Hmore = 0;
         for (j = 0; j < 3; j++) {
-          entropy += logcache[subcount[j]] + logcache[count[j] - subcount[j]];
+          if (subcount[j] == 0) continue;
+          float P = 1.0*subcount[j] / (i - from);
+          Hless -= P * log2(P);
         }
-        entropy -= logcache[i - from] + logcache[to - i];
-        if (entropy > best) {
-          best = entropy;
+        for (j = 0; j < 3; j++) {
+          if (count[j] == subcount[j]) continue;
+          float P = 1.0*(count[j] - subcount[j]) / (to - i);
+          Hmore -= P * log2(P);
+        }
+        gain -= (Hless * (i - from) + Hmore * (to - i)) / (to - from);
+        if (gain > best) {
+          best = gain;
           *partition = i;
         }
       }
@@ -60,7 +78,25 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
     prevTarget = t;
     prevf = f;
   }
-  return best / (to - from);
+  return best;
+}
+
+void debugger(int from, int to, int *sortOrder) {
+  printf ("\e[91mdata seen\e[39m\n");
+  int i, first, j;
+  /*for (i = from; i < to; i++) {
+    for (j = 0; j < 4; j++) {
+      printf("  %.1f", Features[j][sortOrder[i]]);
+    }
+    printf("  %d\n", Target[sortOrder[i]]);
+  }
+  getchar();*/
+  for (i = 0; i < 4; i++) {
+    for (j = from; j < to; j++) {
+      printf(" %.1f", Features[i][sortOrder[i * 150 + j]]);
+    }
+    puts("");
+  }
 }
 
 struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
@@ -74,18 +110,28 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   for (i = from; i < to; i++) {
     count[Target[state->sortOrder[i]]]++;
   }
+  // compute entropy of whole dataset
+  float H = 0;
+  for (i = 0; i < 3; i++) {
+    if (count[i] == 0) continue;
+    float P = 1.0*count[i] / (to - from);
+    H -= P * log2(P);
+  }
   // find feature with most entropy
   int partition = -1, feature = 0;
-  float entropy = ig(&state->sortOrder[0], 0, from, to, count, &partition);
+  float entropy = ig(&state->sortOrder[0], 0, from, to, count, &partition, H);
+  printf(" %f", entropy);
   for (i = 1; i < 4; i++) {
     int pa = -1;
-    float en = ig(&state->sortOrder[150 * i], i, from, to, count, &pa);
+    float en = ig(&state->sortOrder[150 * i], i, from, to, count, &pa, H);
     if (en > entropy) {
       partition = pa;
       entropy = en;
       feature = i;
     }
+    printf(" %f", en);
   }
+  puts("");
   if (partition == -1) {
     // cannot make partition => create leaf node
     int majority = 0;
@@ -105,25 +151,25 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
     float threashold = (Features[feature][pless] + Features[feature][pmore]) / 2;
     node->threashold = threashold;
     // arrange training data
+    int *temp = state->temp; // get temp storage
     for (i = 0; i < 4; i++) { // for each feature
+      int j;
       if (i == feature) continue; //no need to sort that!
       int *sortOrder = &state->sortOrder[150 * i];
-      int less = from, more = to - 1;
-      while (less < more) {
-        while (less < to - 1 && Features[i][sortOrder[less]] < threashold) {
-          less++;
+      int less = from, more = partition;
+      for (j = from; j < to; j++) {
+        if (Features[feature][sortOrder[j]] < threashold) {
+          temp[less++] = sortOrder[j];
         }
-        while (more > from && Features[i][sortOrder[more]] >= threashold) {
-          more--;
-        }
-        if (less < more) {
-          int tmp = sortOrder[less];
-          sortOrder[less] = sortOrder[more];
-          sortOrder[more] = tmp;
-          less++; more--;
+        else {
+          temp[more++] = sortOrder[j];
         }
       }
+      for (j = from; j < to; j++) {
+        sortOrder[j] = temp[j];
+      }
     }
+    debugger(from, to, state->sortOrder);
     // now call id3 recursively
     node->less = id3_runner(state, from, partition);
     node->more = id3_runner(state, partition, to);
@@ -189,6 +235,7 @@ struct decision_tree *id3_for_all() {
   int *order = sortFeatures();
   struct id3_state state;
   state.sortOrder = order;
+  state.temp = malloc(sizeof(int) * 150);
   struct decision_tree *tree = id3_runner(&state, 0, 150);
   free(order);
   return tree;
