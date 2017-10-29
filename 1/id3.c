@@ -81,24 +81,6 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
   return best;
 }
 
-void debugger(int from, int to, int *sortOrder) {
-  printf ("\e[91mdata seen\e[39m\n");
-  int i, first, j;
-  /*for (i = from; i < to; i++) {
-    for (j = 0; j < 4; j++) {
-      printf("  %.1f", Features[j][sortOrder[i]]);
-    }
-    printf("  %d\n", Target[sortOrder[i]]);
-  }
-  getchar();*/
-  for (i = 0; i < 4; i++) {
-    for (j = from; j < to; j++) {
-      printf(" %.1f", Features[i][sortOrder[i * 150 + j]]);
-    }
-    puts("");
-  }
-}
-
 struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
 {
   struct decision_tree *node = malloc(sizeof(struct decision_tree));
@@ -120,7 +102,6 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   // find feature with most entropy
   int partition = -1, feature = 0;
   float entropy = ig(&state->sortOrder[0], 0, from, to, count, &partition, H);
-  printf(" %f", entropy);
   for (i = 1; i < 4; i++) {
     int pa = -1;
     float en = ig(&state->sortOrder[150 * i], i, from, to, count, &pa, H);
@@ -129,9 +110,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
       entropy = en;
       feature = i;
     }
-    printf(" %f", en);
   }
-  puts("");
   if (partition == -1) {
     // cannot make partition => create leaf node
     int majority = 0;
@@ -169,7 +148,6 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
         sortOrder[j] = temp[j];
       }
     }
-    debugger(from, to, state->sortOrder);
     // now call id3 recursively
     node->less = id3_runner(state, from, partition);
     node->more = id3_runner(state, partition, to);
@@ -261,4 +239,3 @@ void printDecision(struct decision_tree *node, int indent) {
     printDecision(node->more, indent+1);
   }
 }
-
