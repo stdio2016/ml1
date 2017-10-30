@@ -9,5 +9,5 @@ extern int Target[];
 extern float Features[][150];
 
 void shuffleData();
-struct decision_tree *id3_for_all();
+struct decision_tree *id3_from_data(const int *dataIds, int size, int featureCount, int *features);
 void printDecision(struct decision_tree *node, int indent);

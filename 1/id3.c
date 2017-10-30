@@ -7,11 +7,15 @@ float Features[4][150];
 // can only handle continuous features
 
 struct id3_state {
+  int featureCount;
+  int *features; // features that this tree sees
   int *sortOrder;
   int *temp; // temporary storage of size 150
 };
 
 float logcache[151];
+
+// Calculate information gain
 // sortOrder[from ~ to-1] is dataset D, sorted by descriptive feature feat
 // H is entropy of the dataset D
 float ig(const int *sortOrder, int feat, int from, int to, const int *count, int *partition, float H)
@@ -81,12 +85,15 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
   return best;
 }
 
+// build decision tree
+// from~to-1: range of data
 struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
 {
   struct decision_tree *node = malloc(sizeof(struct decision_tree));
   if (node == NULL) {
     exit(-2);
   }
+  // count each target
   int count[3] = {0,0,0};
   int i;
   for (i = from; i < to; i++) {
@@ -101,10 +108,10 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   }
   // find feature with most entropy
   int partition = -1, feature = 0;
-  float entropy = ig(&state->sortOrder[0], 0, from, to, count, &partition, H);
-  for (i = 1; i < 4; i++) {
+  float entropy = ig(&state->sortOrder[0], state->features[0], from, to, count, &partition, H);
+  for (i = 1; i < state->featureCount; i++) {
     int pa = -1;
-    float en = ig(&state->sortOrder[150 * i], i, from, to, count, &pa, H);
+    float en = ig(&state->sortOrder[150 * i], state->features[i], from, to, count, &pa, H);
     if (en > entropy) {
       partition = pa;
       entropy = en;
@@ -124,14 +131,17 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   }
   else {
     node->target = -1;
-    node->feature = feature;
+    node->feature = state->features[feature];
     int *sortOrder = &state->sortOrder[150 * feature];
+
+    feature = state->features[feature];
+    // calculate threshold
     int pless = sortOrder[partition - 1], pmore = sortOrder[partition];
     float threashold = (Features[feature][pless] + Features[feature][pmore]) / 2;
     node->threashold = threashold;
     // arrange training data
     int *temp = state->temp; // get temp storage
-    for (i = 0; i < 4; i++) { // for each feature
+    for (i = 0; i < state->featureCount; i++) { // for each feature
       int j;
       if (i == feature) continue; //no need to sort that!
       int *sortOrder = &state->sortOrder[150 * i];
@@ -178,44 +188,61 @@ void shuffleData() {
   }
 }
 
-static int featureToComp;
-int featureCompare(const void *a, const void *b) {
-  int i = *(int *) a, j = *(int *) b;
-  float fa = Features[featureToComp][i];
-  float fb = Features[featureToComp][j];
-  if (fa < fb) return -1;
-  if (fa == fb) return 0;
-  if (fa > fb) return 1;
-}
-
-int *sortFeatures() {
-  int i, j;
-  int *sortOrder = malloc(sizeof(int) * 150 * 4);
-  if (sortOrder == NULL) exit(-2);
-  for (i = 0; i < 4; i++) {
-    for (j = 0; j < 150; j++) {
-      sortOrder[i * 150 + j] = j;
+void sortByFeature(const int *dataIds, int size, int feature, int *out, int *tmp) {
+  float *feats = Features[feature];
+  if (size < 10) {
+    // bubble sort
+    int i, j;
+    for (i = 0; i < size; i++) {
+      out[i] = dataIds[i];
+    }
+    for (i = 0; i < size; i++) {
+      for (j = 1; j < size; j++) {
+        if (feats[out[j-1]] > feats[out[j]]) {
+          int t = out[j];
+          out[j] = out[j-1];
+          out[j-1] = t;
+        }
+      }
     }
   }
-  for (i = 0; i < 4; i++) {
-    featureToComp = i;
-    qsort(&sortOrder[i * 150], 150, sizeof(int), featureCompare);
+  else {
+    // merge sort
+    int half = size>>1;
+    sortByFeature(dataIds, half, feature, out, tmp);
+    sortByFeature(dataIds + half, size - half, feature, out + half, tmp);
+    int a = 0, b = half, c = 0;
+    while (a < half && b < size) {
+      if (feats[out[a]] > feats[out[b]]) {
+        tmp[c] = out[b++];
+      }
+      else {
+        tmp[c] = out[a++];
+      }
+      c++;
+    }
+    while (a < half) tmp[c++] = out[a++];
+    while (b < size) tmp[c++] = out[b++];
+    for (c = 0; c < size; c++) {
+      out[c] = tmp[c];
+    }
   }
-  return sortOrder;
 }
 
-struct decision_tree *id3_for_all() {
-  int i;
-  logcache[0] = 0;
-  for (i = 1; i <= 150; i++) {
-    logcache[i] = i * log(i);
-  }
-  int *order = sortFeatures();
+// build decision tree from some data
+struct decision_tree *id3_from_data(const int *dataIds, int size, int featureCount, int *features) {
   struct id3_state state;
-  state.sortOrder = order;
+  state.featureCount = featureCount;
+  state.features = features;
+  state.sortOrder = malloc(sizeof(int) * 150 * featureCount);
   state.temp = malloc(sizeof(int) * 150);
-  struct decision_tree *tree = id3_runner(&state, 0, 150);
-  free(order);
+  int i;
+  for(i = 0; i < featureCount; i++) {
+    sortByFeature(dataIds, size, features[i], &state.sortOrder[150 * i], state.temp);
+  }
+  struct decision_tree *tree = id3_runner(&state, 0, size);
+  free(state.sortOrder);
+  free(state.temp);
   return tree;
 }
 
