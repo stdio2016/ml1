@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include "id3.h"
 int Target[150];
 float Features[4][150];
@@ -172,7 +173,7 @@ void swapfloat(float *a, float *b) {
 }
 
 void shuffleData() {
-  srand(9487);
+  srand(time(NULL));
   int i, r;
   for (i = 0; i < 150-1; i++) {
     r = rand() % (150 - i) + i;
