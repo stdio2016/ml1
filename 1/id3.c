@@ -266,3 +266,14 @@ void printDecision(struct decision_tree *node, int indent) {
     printDecision(node->more, indent+1);
   }
 }
+
+void freeTree(struct decision_tree *tree) {
+  if (tree->target < 0) {
+    freeTree(tree->less);
+    freeTree(tree->more);
+    free(tree);
+  }
+  else { // leaf node
+    free(tree);
+  }
+}

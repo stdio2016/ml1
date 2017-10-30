@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef PARALLEL
 #include <pthread.h>
+#endif
 #include "id3.h"
 #include "validate.h"
 
@@ -56,22 +58,29 @@ void *kfoldRunner(void *param){
   Perf[fold].accuracy = correctSum * 1.0 / foldsize;
   free(training);
   free(validate);
+  freeTree(tree);
   return NULL;
 }
 
 void kfold() {
   int params[5] = {0,1,2,3,4};
+  int i;
+#ifdef PARALLEL
   pthread_attr_t att;
   pthread_t pid[5];
   pthread_attr_init(&att);
-  int i;
   for (i = 0; i < 5; i++) {
     pthread_create(&pid[i], &att, kfoldRunner, &params[i]);
   }
   pthread_attr_destroy(&att);
+#endif
   struct id3_performance_t sum = {};
   for (i = 0; i < 5; i++) {
+#ifdef PARALLEL
     pthread_join(pid[i], NULL);
+#else
+    kfoldRunner(&params[i]);
+#endif
     sum.accuracy += Perf[i].accuracy;
     int j;
     for (j = 0; j < 3; j++) {
