@@ -88,8 +88,8 @@ void kfold() {
       sum.recall[j] += Perf[i].recall[j];
     }
   }
-  printf("%f\n", sum.accuracy / 5);
+  printf("%.3f\n", sum.accuracy / 5);
   for (i = 0; i < 3; i++) {
-    printf("%f %f\n", sum.precision[i] / 5, sum.recall[i] / 5);
+    printf("%.3f %.3f\n", sum.precision[i] / 5, sum.recall[i] / 5);
   }
 }
