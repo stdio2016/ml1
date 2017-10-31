@@ -67,7 +67,7 @@ void *kfoldRunner(void *param){
   return NULL;
 }
 
-void kfold() {
+void kfoldBased(void *(*runner)(void *)) {
   int params[KFOLD_K];
   int i;
   for (i = 0; i < KFOLD_K; i++) {
@@ -78,7 +78,7 @@ void kfold() {
   pthread_t pid[KFOLD_K];
   pthread_attr_init(&att);
   for (i = 0; i < KFOLD_K; i++) {
-    pthread_create(&pid[i], &att, kfoldRunner, &params[i]);
+    pthread_create(&pid[i], &att, runner, &params[i]);
   }
   pthread_attr_destroy(&att);
 #endif
@@ -87,7 +87,7 @@ void kfold() {
 #ifdef PARALLEL
     pthread_join(pid[i], NULL);
 #else
-    kfoldRunner(&params[i]);
+    runner(&params[i]);
 #endif
     sum.accuracy += Perf[i].accuracy;
     int j;
@@ -123,12 +123,13 @@ int predictFromForest(int dataId, struct decision_tree **forest, int treeCount) 
   if (maxtime == 1) return max;
   // there are more than one good results
   // first tree with good result wins
-  for (i = 0; i < CLASSCOUNT; i++) {
+  for (i = 0; i < treeCount; i++) {
     int ans = predictFromTree(dataId, forest[i]);
     if (count[ans] == count[max]) {
       return ans;
     }
   }
+  return max;
 }
 
 void *randomForestRunner(void *param) {
@@ -192,4 +193,12 @@ void *randomForestRunner(void *param) {
   free(bag);
   free(training);
   return NULL;
+}
+
+void kfold(void) {
+  kfoldBased(kfoldRunner);
+}
+
+void randomForest(void) {
+  kfoldBased(randomForestRunner);
 }

@@ -29,7 +29,7 @@ void mlread(FILE *f)
   }
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
   FILE *f;
   f = fopen("bezdekIris.data", "r");
@@ -38,7 +38,12 @@ int main(void)
   }
   mlread(f);
   shuffleData();
-  kfold();
+  if (argc == 2 && strcmp(argv[1], "-RF") == 0) {\
+    randomForest();
+  }
+  else {
+    kfold();
+  }
   fclose(f);
   return 0;
 }
