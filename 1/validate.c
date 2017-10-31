@@ -16,7 +16,7 @@ struct id3_performance_t {
 
 int predictFromTree(int dataId, struct decision_tree *tree) {
   if (tree->target >= 0) return tree->target;
-  if (Features[tree->feature][dataId] > tree->threashold) {
+  if (Features[tree->feature][dataId] > tree->threshold) {
     return predictFromTree(dataId, tree->more);
   }
   return predictFromTree(dataId, tree->less);

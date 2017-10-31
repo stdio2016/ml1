@@ -5,7 +5,7 @@
 struct decision_tree {
   int target; // -1 means not leaf node, >= 0 means leaf
   int feature;
-  float threashold;
+  float threshold;
   struct decision_tree *less, *more;
 };
 extern int Target[];

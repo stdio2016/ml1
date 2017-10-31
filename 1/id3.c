@@ -136,8 +136,8 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
     feature = state->features[feature];
     // calculate threshold
     int pless = sortOrder[partition - 1], pmore = sortOrder[partition];
-    float threashold = (Features[feature][pless] + Features[feature][pmore]) / 2;
-    node->threashold = threashold;
+    float threshold = (Features[feature][pless] + Features[feature][pmore]) / 2;
+    node->threshold = threshold;
     // arrange training data
     int *temp = state->temp; // get temp storage
     for (i = 0; i < state->featureCount; i++) { // for each feature
@@ -146,7 +146,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
       int *sortOrder = state->sortOrder[i];
       int less = from, more = partition;
       for (j = from; j < to; j++) {
-        if (Features[feature][sortOrder[j]] < threashold) {
+        if (Features[feature][sortOrder[j]] < threshold) {
           temp[less++] = sortOrder[j];
         }
         else {
@@ -263,7 +263,7 @@ void printDecision(struct decision_tree *node, int indent) {
     printf("Iris-virginica %d\n", node->feature);
   }
   else {
-    printf("test feature %d, threashold = %f\n", node->feature, node->threashold);
+    printf("test feature %d, threshold = %f\n", node->feature, node->threshold);
     printDecision(node->less, indent+1);
     printDecision(node->more, indent+1);
   }
