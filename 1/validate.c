@@ -8,9 +8,9 @@
 
 struct id3_performance_t {
   float accuracy;
-  float precision[3];
-  float recall[3];
-} Perf[5];
+  float precision[CLASSCOUNT];
+  float recall[CLASSCOUNT];
+} Perf[KFOLD_K];
 
 int predictFromTree(int dataId, struct decision_tree *tree) {
   if (tree->target >= 0) return tree->target;
@@ -23,12 +23,12 @@ int predictFromTree(int dataId, struct decision_tree *tree) {
 // k-fold validation where k=5
 void *kfoldRunner(void *param){
   int fold = *(int *) param;
-  const int k = 5, foldsize = 150 / k;
-  int *training = malloc(sizeof(int) * (150 - foldsize));
+  int foldsize = DATASIZE / KFOLD_K;
+  int *training = malloc(sizeof(int) * (DATASIZE - foldsize));
   int *validate = malloc(sizeof(int) * foldsize);
   if (training == NULL) exit(2);
   int i, j, n = 0;
-  for (i = 0; i < k; i++) {
+  for (i = 0; i < KFOLD_K; i++) {
     if (i != fold)
     for (j = 0; j < foldsize; j++) {
       training[n++] = i * foldsize + j;
@@ -37,11 +37,14 @@ void *kfoldRunner(void *param){
   for (j = 0; j < foldsize; j++) {
     validate[j] = fold * foldsize + j;
   }
-  int allfeatures[4] = {0, 1, 2, 3};
-  struct decision_tree *tree = id3_from_data(training, 150 - foldsize, 4, allfeatures);
-  int correct[3] = {0,0,0};
-  int count[3] = {0,0,0};
-  int predcount[3] = {0,0,0};
+  int allfeatures[FEATURECOUNT];
+  for (i = 0; i < FEATURECOUNT; i++) {
+    allfeatures[i] = i;
+  }
+  struct decision_tree *tree = id3_from_data(training, DATASIZE - foldsize, FEATURECOUNT, allfeatures);
+  int correct[CLASSCOUNT] = {0,0,0};
+  int count[CLASSCOUNT] = {0,0,0};
+  int predcount[CLASSCOUNT] = {0,0,0};
   for (i = 0; i < foldsize; i++) {
     int predict = predictFromTree(validate[i], tree);
     int actual = Target[validate[i]];
@@ -50,7 +53,7 @@ void *kfoldRunner(void *param){
     predcount[predict]++;
   }
   int correctSum = 0;
-  for (j = 0; j < 3; j++) {
+  for (j = 0; j < CLASSCOUNT; j++) {
     correctSum += correct[j];
     Perf[fold].precision[j] = correct[j] * 1.0 / predcount[j];
     Perf[fold].recall[j] = correct[j] * 1.0 / count[j];
@@ -63,19 +66,22 @@ void *kfoldRunner(void *param){
 }
 
 void kfold() {
-  int params[5] = {0,1,2,3,4};
+  int params[KFOLD_K];
   int i;
+  for (i = 0; i < KFOLD_K; i++) {
+    params[i] = i;
+  }
 #ifdef PARALLEL
   pthread_attr_t att;
-  pthread_t pid[5];
+  pthread_t pid[KFOLD_K];
   pthread_attr_init(&att);
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < KFOLD_K; i++) {
     pthread_create(&pid[i], &att, kfoldRunner, &params[i]);
   }
   pthread_attr_destroy(&att);
 #endif
   struct id3_performance_t sum = {};
-  for (i = 0; i < 5; i++) {
+  for (i = 0; i < KFOLD_K; i++) {
 #ifdef PARALLEL
     pthread_join(pid[i], NULL);
 #else
@@ -83,13 +89,13 @@ void kfold() {
 #endif
     sum.accuracy += Perf[i].accuracy;
     int j;
-    for (j = 0; j < 3; j++) {
+    for (j = 0; j < CLASSCOUNT; j++) {
       sum.precision[j] += Perf[i].precision[j];
       sum.recall[j] += Perf[i].recall[j];
     }
   }
-  printf("%.3f\n", sum.accuracy / 5);
-  for (i = 0; i < 3; i++) {
-    printf("%.3f %.3f\n", sum.precision[i] / 5, sum.recall[i] / 5);
+  printf("%.3f\n", sum.accuracy / KFOLD_K);
+  for (i = 0; i < CLASSCOUNT; i++) {
+    printf("%.3f %.3f\n", sum.precision[i] / KFOLD_K, sum.recall[i] / KFOLD_K);
   }
 }

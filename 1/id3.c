@@ -3,18 +3,16 @@
 #include <stdio.h>
 #include <time.h>
 #include "id3.h"
-int Target[150];
-float Features[4][150];
+int Target[DATASIZE];
+float Features[FEATURECOUNT][DATASIZE];
 // can only handle continuous features
 
 struct id3_state {
   int featureCount;
   int *features; // features that this tree sees
-  int *sortOrder;
+  int **sortOrder;
   int *temp; // temporary storage of size 150
 };
-
-float logcache[151];
 
 // Calculate information gain
 // sortOrder[from ~ to-1] is dataset D, sorted by descriptive feature feat
@@ -22,7 +20,7 @@ float logcache[151];
 float ig(const int *sortOrder, int feat, int from, int to, const int *count, int *partition, float H)
 {
   int i;
-  int subcount[3] = {0,0,0};
+  int subcount[CLASSCOUNT] = {0,0,0};
   int prevTarget = Target[sortOrder[from]];
   float *feature = Features[feat];
   float prevf = feature[sortOrder[from]];
@@ -61,12 +59,12 @@ float ig(const int *sortOrder, int feat, int from, int to, const int *count, int
         float gain = H;
         // compute rem(d,D)
         float Hless = 0, Hmore = 0;
-        for (j = 0; j < 3; j++) {
+        for (j = 0; j < CLASSCOUNT; j++) {
           if (subcount[j] == 0) continue;
           float P = 1.0*subcount[j] / (i - from);
           Hless -= P * log2(P);
         }
-        for (j = 0; j < 3; j++) {
+        for (j = 0; j < CLASSCOUNT; j++) {
           if (count[j] == subcount[j]) continue;
           float P = 1.0*(count[j] - subcount[j]) / (to - i);
           Hmore -= P * log2(P);
@@ -95,24 +93,24 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
     exit(-2);
   }
   // count each target
-  int count[3] = {0,0,0};
+  int count[CLASSCOUNT] = {0,0,0};
   int i;
   for (i = from; i < to; i++) {
-    count[Target[state->sortOrder[i]]]++;
+    count[Target[state->sortOrder[0][i]]]++;
   }
   // compute entropy of whole dataset
   float H = 0;
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < CLASSCOUNT; i++) {
     if (count[i] == 0) continue;
     float P = 1.0*count[i] / (to - from);
     H -= P * log2(P);
   }
   // find feature with most entropy
   int partition = -1, feature = 0;
-  float entropy = ig(&state->sortOrder[0], state->features[0], from, to, count, &partition, H);
+  float entropy = ig(state->sortOrder[0], state->features[0], from, to, count, &partition, H);
   for (i = 1; i < state->featureCount; i++) {
     int pa = -1;
-    float en = ig(&state->sortOrder[150 * i], state->features[i], from, to, count, &pa, H);
+    float en = ig(state->sortOrder[i], state->features[i], from, to, count, &pa, H);
     if (en > entropy) {
       partition = pa;
       entropy = en;
@@ -122,7 +120,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   if (partition == -1) {
     // cannot make partition => create leaf node
     int majority = 0;
-    for (i = 1; i < 3; i++) {
+    for (i = 1; i < CLASSCOUNT; i++) {
       if (count[i] > count[majority]) {
         majority = i;
       }
@@ -133,7 +131,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
   else {
     node->target = -1;
     node->feature = state->features[feature];
-    int *sortOrder = &state->sortOrder[150 * feature];
+    int *sortOrder = state->sortOrder[feature];
 
     feature = state->features[feature];
     // calculate threshold
@@ -145,7 +143,7 @@ struct decision_tree *id3_runner(struct id3_state *state, int from, int to)
     for (i = 0; i < state->featureCount; i++) { // for each feature
       int j;
       if (i == feature) continue; //no need to sort that!
-      int *sortOrder = &state->sortOrder[150 * i];
+      int *sortOrder = state->sortOrder[i];
       int less = from, more = partition;
       for (j = from; j < to; j++) {
         if (Features[feature][sortOrder[j]] < threashold) {
@@ -175,15 +173,15 @@ void swapfloat(float *a, float *b) {
 void shuffleData() {
   srand(time(NULL));
   int i, r;
-  for (i = 0; i < 150-1; i++) {
-    r = rand() % (150 - i) + i;
+  for (i = 0; i < DATASIZE-1; i++) {
+    r = rand() % (DATASIZE - i) + i;
     if (r == i) continue;
     // swap item at r and i
     int tmp = Target[i];
     Target[i] = Target[r];
     Target[r] = tmp;
     int j = 0;
-    for (j = 0; j < 4; j++) {
+    for (j = 0; j < FEATURECOUNT; j++) {
       swapfloat(&Features[j][i], &Features[j][r]);
     }
   }
@@ -235,13 +233,16 @@ struct decision_tree *id3_from_data(const int *dataIds, int size, int featureCou
   struct id3_state state;
   state.featureCount = featureCount;
   state.features = features;
-  state.sortOrder = malloc(sizeof(int) * 150 * featureCount);
-  state.temp = malloc(sizeof(int) * 150);
+  state.sortOrder = malloc(sizeof(int *) * featureCount);
+  int *sortSpace = malloc(sizeof(int) * size * featureCount);
+  state.temp = malloc(sizeof(int) * size);
   int i;
   for(i = 0; i < featureCount; i++) {
-    sortByFeature(dataIds, size, features[i], &state.sortOrder[150 * i], state.temp);
+    state.sortOrder[i] = &sortSpace[size * i];
+    sortByFeature(dataIds, size, features[i], state.sortOrder[i], state.temp);
   }
   struct decision_tree *tree = id3_runner(&state, 0, size);
+  free(sortSpace);
   free(state.sortOrder);
   free(state.temp);
   return tree;
