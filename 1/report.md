@@ -14,6 +14,16 @@
 * precision of class 2: 0.916
 * recall of class 2: 0.909
 
+使用 random forest 演算法測試了 10 次，樹的數量 = 10，得到的平均值
+
+* total accuracy: 0.9467
+* precision of class 0: 1
+* recall of class 0: 1
+* precision of class 1: 0.9119
+* recall of class 1: 0.9296
+* precision of class 2: 0.9317
+* recall of class 2: 0.9062
+
 ## 執行環境
 * Ubuntu 17.10
 * gcc 7.2.0
@@ -34,7 +44,7 @@
 
 目前程式不會剪枝，因為我測試了好幾次，都沒差別。
 
-我做的 random forest 作法是，建立 N 個決策樹，每個樹使用的訓練資料是從原本的訓練資料隨機取出 D 個，取後放回，D = 訓練資料大小。測試資料有可能重複，不管它。驗證時把測試資料，送到每棵決策樹，進行「投票」，有最多棵樹同意的輸出就是預測值。可能會有 2 個輸出有一樣多的樹同意，這時程式會認定編號小的樹的決策最重要，當成預測值
+我做的 random forest 配合 k-fold validation 的作法是，在每一次的 k-fold 中，會有1份 test data 和4份訓練資料，每次的 k-fold 建立 N 個決策樹，每個樹使用的訓練資料是從 k-fold 產生的訓練資料隨機取出 D 個，取後放回，D = 訓練資料大小。測試資料有可能重複，不管它。驗證時把測試資料，送到每棵決策樹，進行「投票」，有最多棵樹同意的輸出就是預測值。可能會有 2 個輸出有一樣多的樹同意，這時程式會認定編號小的樹的決策最重要，當成預測值
 
 程式使用了幾種結構：
 1. `struct decision_tree`：就是決策樹！
