@@ -4,7 +4,7 @@
 
 ## 輸入格式
 
-在命令列輸入 `./run.sh` <*訓練資料檔*> <*測試資料檔*> 可以用 k-NN 演算法分析資料
+在命令列輸入 `./run.sh <訓練資料檔> <測試資料檔>` 可以用 k-NN 演算法分析資料
 
 訓練資料是 csv 檔，有 12 個欄位，其中第 1 個欄位是編號，第 2 個欄位是 ecoli 的名字，最後一個欄位是 class of ecoli，有 8 個 class：cp、im、pp、imU、om、omL、inL、imS，作為 classifier 的輸出。其他欄位是 attribute ，作為 classifier 的輸入
 
