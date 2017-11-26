@@ -9,7 +9,7 @@ KdtreeNode = collections.namedtuple('KdtreeNode', ['center', 'left', 'right', 's
 # only some of the columns in csv are used
 # and I need to convert string to number
 def selectAttributes(row):
-    selected = []
+    selected = [int(row[0])] # row id
     for i in range(2, 11):
         selected.append(float(row[i])) # attributes
     selected.append(row[11]) # class
@@ -25,8 +25,10 @@ def main():
         reader = csv.reader(csvfile)
         next(reader) # skip first line
         dat = [selectAttributes(row) for row in reader]
-        showKdtree(Kdtree(dat, 9, 0))
-        knn(Kdtree(dat, 9, 0), 2, [1,2,3,4], 4)
+        # showKdtree(Kdtree(dat, 9, 0))
+        show = (knn(Kdtree(dat, 9, 0), 10, [0,0,0,0,0,0,0,0,0], 9))
+        for i in show:
+             print (i[0])
 
 def Kdtree(points, k, depth):
     n = len(points)
@@ -36,12 +38,12 @@ def Kdtree(points, k, depth):
     # select axis by depth
     axis = depth % k
     # sort by axis
-    A = sorted(points, key=lambda x: x[axis])
+    A = sorted(points, key=lambda x: x[axis+1])
 
     middle = n//2
     return KdtreeNode(
         size = n,
-        center = A[middle],
+        center = tuple(A[middle]),
         left = Kdtree(A[:middle], k, depth+1),
         right = Kdtree(A[middle+1:], k, depth+1)
     )
@@ -56,32 +58,47 @@ def showKdtree(tree, lv=0):
 
 # find k nearest neighbors of the query point
 def knn(tree, k, query, dimension):
-    bests = []
-    knn_helper(tree, k, query, dimension, 0, bests)
-    return bests
+    bests = [] # bests is a heap which stores tuple (-distance, record)
+    knn_helper(tree, k, query, dimension, 0, bests, ())
+    result = []
+    for i in range(k):
+        result.append((-bests[0][0], bests[0][1]))
+        heapq.heappop(bests)
+    result.reverse()
+    return result
 
 # helper for knn
 # node: a node of kdtree
 # dim: dimension
 # lv: level of recursion
 # bests: current best
-def knn_helper(node, k, query, dim, lv, bests):
+def knn_helper(node, k, query, dim, lv, bests, bounds):
     if node == None:
         return None
     axis = lv % dim
-    if query[axis] > node.center[axis]:
+    if query[axis] > node.center[axis+1]:
         good = node.right
         bad = node.left
     else:
         good = node.left
         bad = node.right
-    knn_helper(good, k, query, dim, lv+1, bests)
+    knn_helper(good, k, query, dim, lv+1, bests, bounds)
+    d = mydistance(query, node.center[1:])
     if len(bests) < k:
-        heapq.heappush(bests, (node.center, mydistance(query, node.center)))
+        heapq.heappush(bests, (-d, node.center))
     else:
-        # TODO: check if need to replace
+        if -bests[0][0] > d: # distance too large
+            heapq.heappop(bests)
+            heapq.heappush(bests, (-d, node.center))
         pass
-    # TODO: check if another side is possible
+    # check if another side is possible
+    bounds = bounds[:axis] + (node.center[axis+1] - query[axis],) + bounds[axis+1:]
+    mindist = 0
+    for i in bounds:
+        mindist += i * i
+    mindist = math.sqrt(mindist)
+    if mindist < -bests[0][0]: # another side is possible
+        knn_helper(bad, k, query, dim, lv+1, bests, bounds)
     return None
 
 def mydistance(vec1, vec2):
