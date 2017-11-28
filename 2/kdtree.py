@@ -2,7 +2,7 @@ import collections
 import math
 import heapq
 
-KdtreeNode = collections.namedtuple('KdtreeNode', ['center', 'left', 'right', 'size'])
+KdtreeNode = collections.namedtuple('KdtreeNode', ['center', 'left', 'right', 'size', 'no', 'cls'])
 
 def Kdtree(points, k, depth):
     n = len(points)
@@ -17,7 +17,9 @@ def Kdtree(points, k, depth):
     middle = n//2
     return KdtreeNode(
         size = n,
-        center = tuple(A[middle]),
+        center = tuple(A[middle][1:-1]),
+        no = A[middle][0],
+        cls = A[middle][-1],
         left = Kdtree(A[:middle], k, depth+1),
         right = Kdtree(A[middle+1:], k, depth+1)
     )
@@ -32,11 +34,11 @@ def showKdtree(tree, lv=0):
 
 # find k nearest neighbors of the query point
 def knn(tree, k, query, dimension):
-    bests = [] # bests is a heap which stores tuple (-distance, record)
+    bests = [] # bests is a heap which stores tuple (-distance, record, id, classification)
     knn_helper(tree, k, query, dimension, 0, bests, ())
     result = []
     for i in range(k):
-        result.append((-bests[0][0], bests[0][1]))
+        result.append((-bests[0][0], bests[0][1], bests[0][2], bests[0][3]))
         heapq.heappop(bests)
     result.reverse()
     return result
@@ -45,7 +47,7 @@ def knnClassifier(tree, k, query, dimension):
     neighbor = knn(tree, k, query, dimension)
     s = {}
     for poll in neighbor:
-        cls = poll[1][-1]
+        cls = poll[3]
         if cls in s:
             s[cls] += 1
         else:
@@ -69,23 +71,23 @@ def knn_helper(node, k, query, dim, lv, bests, bounds):
     if node == None:
         return None
     axis = lv % dim
-    if query[axis] > node.center[axis+1]:
+    if query[axis] > node.center[axis]:
         good = node.right
         bad = node.left
     else:
         good = node.left
         bad = node.right
     knn_helper(good, k, query, dim, lv+1, bests, bounds)
-    d = mydistance(query, node.center[1:-1])
+    d = mydistance(query, node.center)
     if len(bests) < k:
-        heapq.heappush(bests, (-d, node.center))
+        heapq.heappush(bests, (-d, node.center, node.no, node.cls))
     else:
         if -bests[0][0] > d: # distance too large
             heapq.heappop(bests)
-            heapq.heappush(bests, (-d, node.center))
+            heapq.heappush(bests, (-d, node.center, node.no, node.cls))
         pass
     # check if another side is possible
-    bounds = bounds[:axis] + (node.center[axis+1] - query[axis],) + bounds[axis+1:]
+    bounds = bounds[:axis] + (node.center[axis] - query[axis],) + bounds[axis+1:]
     mindist = 0
     for i in bounds:
         mindist += i * i

@@ -44,7 +44,7 @@ def showTrainResult(tree, tests, dimension):
         for i in range(3):
             query = tests[i][1:-1]
             result = knn(tree, k, query, dimension)
-            # result is a list of tuples (distance, record)
-            print (" ".join([str(rec[1][0]) for rec in result]))
+            # result is a list of tuples (distance, record, id, class)
+            print (" ".join([str(rec[2]) for rec in result]))
         print ("")
 main()
