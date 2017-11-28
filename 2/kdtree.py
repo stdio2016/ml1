@@ -1,10 +1,26 @@
 import collections
 import math
 import heapq
+import numpy
 
 KdtreeNode = collections.namedtuple('KdtreeNode', ['center', 'left', 'right', 'size', 'no', 'cls'])
 
-def Kdtree(points, k, depth):
+def pca(data, useDims):
+    A = numpy.array(data, dtype=float)
+    mean = numpy.mean(A, 0)
+    A -= mean
+    std = numpy.std(A, 0)
+    A /= std
+    C = numpy.dot(A.T, A)
+    E, Q = numpy.linalg.eigh(C)
+    keys = numpy.argsort(E)[::-1]
+    use = keys[:useDims]
+    E = E[use]
+    Q = Q[:, use]
+    A = numpy.dot(A, Q)
+    return (E, Q, A, mean, std)
+
+def Kdtree(points, k, depth = 0):
     n = len(points)
     if n == 0:
         return None
@@ -35,7 +51,7 @@ def showKdtree(tree, lv=0):
 # find k nearest neighbors of the query point
 def knn(tree, k, query, dimension):
     bests = [] # bests is a heap which stores tuple (-distance, record, id, classification)
-    knn_helper(tree, k, query, dimension, 0, bests, ())
+    knn_helper(tree, k, query, dimension, 0, bests, (0,) * dimension)
     result = []
     for i in range(k):
         result.append((-bests[0][0], bests[0][1], bests[0][2], bests[0][3]))
@@ -92,7 +108,7 @@ def knn_helper(node, k, query, dim, lv, bests, bounds):
     for i in bounds:
         mindist += i * i
     mindist = math.sqrt(mindist)
-    if mindist < -bests[0][0]: # another side is possible
+    if len(bests) < k or mindist < -bests[0][0]: # another side is possible
         knn_helper(bad, k, query, dim, lv+1, bests, bounds)
     return None
 
