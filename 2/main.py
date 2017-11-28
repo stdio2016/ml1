@@ -36,8 +36,8 @@ def showTrainResult(dat, tests, dimension):
             expected = query[-1]
             query = query[1:-1]
             ans = knnClassifier(tree, k, query, dimension)
-            if expected in ans:
-                accuracy += 1.0 / len(ans)
+            if expected == ans:
+                accuracy += 1.0
             # print (ans)
         accuracy /= len(tests)
         print ("KNN accuracy: %f" % accuracy)
@@ -64,8 +64,8 @@ def showTrainResult(dat, tests, dimension):
         query = (query - mean) / std
         query = numpy.dot(query, Q)
         ans = knnClassifier(tree, k, query, useDim)
-        if expected in ans:
-            accuracy += 1.0 / len(ans)
+        if expected == ans:
+            accuracy += 1.0
     accuracy /= len(tests)
     print ("K = %d, KNN_PCA accuracy: %f" % (k, accuracy))
 

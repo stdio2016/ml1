@@ -61,6 +61,7 @@ def knn(tree, k, query, dimension):
 
 def knnClassifier(tree, k, query, dimension):
     neighbor = knn(tree, k, query, dimension)
+    # count the classes
     s = {}
     for poll in neighbor:
         cls = poll[3]
@@ -68,6 +69,7 @@ def knnClassifier(tree, k, query, dimension):
             s[cls] += 1
         else:
             s[cls] = 1
+    # find the maximum
     mx = 0
     ans = []
     for u in s:
@@ -76,7 +78,12 @@ def knnClassifier(tree, k, query, dimension):
             ans = [u]
         elif s[u] == mx:
             ans.append(u)
-    return ans
+    # if there is a tie, choose the nearest
+    for poll in neighbor:
+        cls = poll[3]
+        if cls in ans:
+            return cls
+    return None
 
 # helper for knn
 # node: a node of kdtree
