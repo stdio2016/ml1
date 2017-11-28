@@ -10,6 +10,9 @@ def pca(data, useDims):
     mean = numpy.mean(A, 0)
     A -= mean
     std = numpy.std(A, 0)
+    for i in range(len(std)):
+        if std[i] == 0:
+            std[i] = 0.00001
     A /= std
     C = numpy.dot(A.T, A)
     E, Q = numpy.linalg.eigh(C)

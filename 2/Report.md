@@ -57,6 +57,12 @@ PCA 的計算也放在 `kdtree.py` 裡。我有做 normalize ，把資料的平�
 
 ## 要用什麼 k 值
 
+沒有 PCA 的時候，我覺得用 k = 10 比較好，這是經 cross-validation 得到的結果。我使用的 cross-validation 是留一驗證，也就是從原始資料取 1 個當作驗證資料，其他作為訓練資料。這個步驟一直重複到每個樣本都當過一次驗證資料
+
+有 PCA 的時候，還是用 k = 10，不過維度降為 7 維，因為有兩個維度看起來是捏照的，找不到來源
+
+驗證程式是 `validate.py`，使用方法為 `validate.py <訓練資料檔>`，會印出 k = 1, 5, 10, 100 時的模型精準度
+
 ## 參考資料
 
 `train.csv` 資料集來自 <https://archive.ics.uci.edu/ml/datasets/Ecoli>，助教取出其中 300 筆，並且加上 2 個無用欄位作為混淆
