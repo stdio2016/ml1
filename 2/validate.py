@@ -1,6 +1,7 @@
 import csv
 import sys
-from kdtree import knn, Kdtree
+import numpy
+from kdtree import knn, Kdtree, pca, knnClassifier
 
 # only some of the columns in csv are used
 # and I need to convert string to number
@@ -22,39 +23,22 @@ def main():
         dat = [selectAttributes(row) for row in reader]
         showValidateResult(dat, 9)
 
-def knnValidate(tree, k, query, dimension):
-    neighbor = knn(tree, k+1, query, dimension)
-    s = {}
-    for poll in neighbor:
-        if poll[0] == 0:
-            continue
-        cls = poll[3]
-        if cls in s:
-            s[cls] += 1
-        else:
-            s[cls] = 1
-    mx = 0
-    ans = []
-    for u in s:
-        if s[u] > mx:
-            mx = s[u]
-            ans = [u]
-        elif s[u] == mx:
-            ans.append(u)
-    return ans
-
 def showValidateResult(data, dimension):
-    tree = Kdtree(data, 9, 0)
-    for k in range(1, 101):
+    for k in [1, 5, 10, 100]:
         print ("k = %d" % k)
         accuracy = 0
+        i = 0
         for query in data:
+            train = data[:i] + data[i+1:]
+            tree = Kdtree(train, 9)
             expected = query[-1]
             query = query[1:-1]
-            ans = knnValidate(tree, k, query, dimension)
-            if expected in ans:
-                accuracy += 1.0 / len(ans)
+            ans = knnClassifier(tree, k, query, dimension)
+            if expected == ans:
+                accuracy += 1.0
             # print (ans)
+            i += 1
         accuracy /= len(data)
         print ("KNN accuracy: %f" % accuracy)
+
 main()
