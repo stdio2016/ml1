@@ -1,6 +1,7 @@
 import csv
 import sys
-from kdtree import knn, Kdtree, knnClassifier
+from kdtree import knn, Kdtree, knnClassifier, pca
+import numpy
 
 # only some of the columns in csv are used
 # and I need to convert string to number
@@ -21,15 +22,14 @@ def main():
         reader = csv.reader(csvfile)
         next(reader) # skip first line
         dat = [selectAttributes(row) for row in reader]
-        tree = Kdtree(dat, 9, 0)
-        # showKdtree(Kdtree(dat, 9, 0))
         with open(testcsv, 'r') as csvfile2:
             reader2 = csv.reader(csvfile2)
             next(reader2) # skip first line
             test = [selectAttributes(row) for row in reader2]
-            showTrainResult(tree, test, 9)
+            showTrainResult(dat, test, 9)
 
-def showTrainResult(tree, tests, dimension):
+def showTrainResult(dat, tests, dimension):
+    tree = Kdtree(dat, dimension)
     for k in [1, 5, 10, 100]:
         accuracy = 0
         for query in tests:
@@ -47,4 +47,26 @@ def showTrainResult(tree, tests, dimension):
             # result is a list of tuples (distance, record, id, class)
             print (" ".join([str(rec[2]) for rec in result]))
         print ("")
+
+    # use PCA to process test data
+    useDim = 2
+    k = 5
+
+    mat = [row[1:-1] for row in dat]
+    E, Q, A, mean, std = pca(mat, useDim)
+    for i in range(len(dat)):
+        dat[i][1:-1] = A[i]
+    tree = Kdtree(dat, useDim)
+    accuracy = 0
+    for query in tests:
+        expected = query[-1]
+        query = query[1:-1]
+        query = (query - mean) / std
+        query = numpy.dot(query, Q)
+        ans = knnClassifier(tree, k, query, useDim)
+        if expected in ans:
+            accuracy += 1.0 / len(ans)
+    accuracy /= len(tests)
+    print ("K = %d, KNN_PCA accuracy: %f" % (k, accuracy))
+
 main()
