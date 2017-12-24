@@ -1,7 +1,7 @@
 import math
 import matplotlib
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn import metrics
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from read import irisDataSet, forestFiresDataSet
 
-def tree1():
+def knn1(k = 5):
     # load data
     data, target = irisDataSet()
 
@@ -22,7 +22,7 @@ def tree1():
     train_pca_x = pca.transform(train_x)
 
     # classifier
-    clf = DecisionTreeClassifier()
+    clf = KNeighborsClassifier(n_neighbors=k)
     clf = clf.fit(train_pca_x, train_y)
 
     # predict
@@ -33,7 +33,7 @@ def tree1():
     accuracy = metrics.accuracy_score(test_y, test_y_predict)
     return (accuracy)
 
-def tree2():
+def knn2(k=5):
     # load data
     data, target = forestFiresDataSet(True)
 
@@ -41,12 +41,12 @@ def tree2():
     train_x, test_x, train_y, test_y = train_test_split(data, target, test_size = 0.3)
 
     # pca
-    pca = PCA(n_components=8)
+    pca = PCA(n_components=7)
     pca.fit(train_x)
     train_pca_x = pca.transform(train_x)
 
     # classifier
-    clf = DecisionTreeClassifier()
+    clf = KNeighborsClassifier(n_neighbors=k)
     clf = clf.fit(train_pca_x, train_y)
 
     # predict
@@ -64,5 +64,15 @@ def avg10of(model):
         sum += model()
     print (sum / 10)
 
-avg10of(tree1)
-avg10of(tree2)
+# find best k for a model
+def findBestKof(model, possibleK):
+    accuracy = []
+    for k in possibleK:
+        sum = model(k) + model(k) + model(k) + model(k)
+        accuracy.append(sum/4)
+    plt.scatter(possibleK, accuracy)
+    plt.show()
+
+avg10of(knn1)
+avg10of(knn2)
+findBestKof(knn2, range(1, 200, 4))
