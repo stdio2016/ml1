@@ -2,9 +2,10 @@ import csv
 import math
 import matplotlib
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn import datasets
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
+from sklearn import metrics
 import matplotlib.pyplot as plt
 
 def irisDataSet():
@@ -28,7 +29,7 @@ def irisDataSet():
             r = [float(x) for x in row[0:4]]
             data.append(r)
             target.append(clsToInt[row[4]])
-        return (data, target)
+        return (np.array(data), np.array(target))
 
 def forestFiresDataSet(binning):
     """
@@ -56,7 +57,7 @@ def forestFiresDataSet(binning):
         for row in reader:
             if len(row) < 4:
                 break
-            r = [float(x) for x in row[0:2] + row[4:12]]
+            r = [float(x) for x in row[4:12]]
             data.append(r)
             area = float(row[12])
             if area == 0:
@@ -74,15 +75,90 @@ def forestFiresDataSet(binning):
             if binning:
                 target.append(dmg) 
             else:
-                target.append(area)
-        return (data, target)
+                target.append(math.log(area + 1))
+        return (np.array(data), np.array(target))
 
-data, target = forestFiresDataSet(True)
-data = np.array(data)
-clf = DecisionTreeClassifier()
-pca = PCA(n_components=2)
-pca.fit(data)
-data = pca.transform(data)
-for row in data:
-    print (row)
-clf = clf.fit(data,target)
+def tree1():
+    # load data
+    data, target = irisDataSet()
+
+    # split train and test data
+    train_x, test_x, train_y, test_y = train_test_split(data, target, test_size = 0.3)
+
+    # pca
+    pca = PCA(n_components=2)
+    pca.fit(train_x)
+    train_pca_x = pca.transform(train_x)
+
+    # classifier
+    clf = DecisionTreeClassifier()
+    clf = clf.fit(train_pca_x, train_y)
+
+    # predict
+    test_pca_x = pca.transform(test_x)
+    test_y_predict = clf.predict(test_pca_x)
+
+    # performance
+    accuracy = metrics.accuracy_score(test_y, test_y_predict)
+    return (accuracy)
+
+def tree2():
+    # load data
+    data, target = forestFiresDataSet(False)
+
+    # split train and test data
+    train_x, test_x, train_y, test_y = train_test_split(data, target, test_size = 0.3)
+
+    # pca
+    pca = PCA(n_components=8)
+    pca.fit(train_x)
+    train_pca_x = pca.transform(train_x)
+
+    # regressor
+    clf = DecisionTreeRegressor()
+    clf = clf.fit(train_pca_x, train_y)
+
+    # predict
+    test_pca_x = pca.transform(test_x)
+    test_y_predict = clf.predict(test_pca_x)
+    print (test_y_predict)
+    print (test_y)
+
+    # performance
+    accuracy = metrics.accuracy_score(test_y, test_y_predict)
+    return (accuracy)
+
+def tree2pic():
+    # load data
+    data, target = forestFiresDataSet(False)
+
+    # split train and test data
+    train_x, test_x, train_y, test_y = train_test_split(data, target, test_size = 0.3)
+
+    # pca
+    pca = PCA(n_components=8)
+    pca.fit(train_x)
+    train_pca_x = pca.transform(train_x)
+
+    # regressor
+    clf = DecisionTreeRegressor()
+    clf = clf.fit(train_pca_x, train_y)
+
+    # predict
+    test_pca_x = pca.transform(test_x)
+    test_y_predict = clf.predict(test_pca_x)
+
+    # draw
+    plt.scatter(test_y_predict, test_y)
+    plt.show()
+
+# test 10 times and average them
+def avg10of(model):
+    sum = 0
+    for i in range(10):
+        sum += model()
+    print (sum / 10)
+
+avg10of(tree1)
+# avg10of(tree2)
+tree2pic()
