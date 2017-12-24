@@ -51,5 +51,7 @@ def avg10of(model):
         sum += model()
     print (sum / 10)
 
+print ("naive bayes iris dataset accuracy:")
 avg10of(bayes1)
+print ("naive bayes forest fire dataset accuracy:")
 avg10of(bayes2)

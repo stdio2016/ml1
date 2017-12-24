@@ -33,7 +33,7 @@ def knn1(k = 5):
     accuracy = metrics.accuracy_score(test_y, test_y_predict)
     return (accuracy)
 
-def knn2(k=5):
+def knn2(k=100):
     # load data
     data, target = forestFiresDataSet(True)
 
@@ -73,6 +73,8 @@ def findBestKof(model, possibleK):
     plt.scatter(possibleK, accuracy)
     plt.show()
 
+print ("knn iris dataset accuracy:")
 avg10of(knn1)
+print ("knn forest fire dataset accuracy:")
 avg10of(knn2)
 findBestKof(knn2, range(1, 200, 4))
